@@ -99,9 +99,9 @@ class HospedajesClient:
             if 'numHabitaciones' in com:
                 ET.SubElement(contrato, "numHabitaciones").text = str(com['numHabitaciones'])
             
-            # internet (Optional but recommended, Boolean 0/1)
+            # internet (Optional but recommended, Rule: 1 for Yes, 0 for No)
             if 'internet' in com:
-                ET.SubElement(contrato, "internet").text = "true" if com['internet'] else "false"
+                ET.SubElement(contrato, "internet").text = "1" if com['internet'] else "0"
                 
             # 2.1.1 pago (Mandatory inside contrato)
             p_data = com.get('pago', {})
@@ -155,6 +155,9 @@ class HospedajesClient:
 
     def comunicacion(self, cod_arrendador, aplicacion, tipo_operacion, tipo_comunicacion, xml_content):
         payload = self._create_zip_base64(xml_content)
+        
+        # HEADER according to the server's requested signature:
+        # codigoArrendador, aplicacion, tipoOperacion, tipoComunicacion
         cabecera = {
             'codigoArrendador': cod_arrendador,
             'aplicacion': aplicacion,
