@@ -35,8 +35,8 @@ if DB_AVAILABLE:
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="MIRador",
-    page_icon="🏨",
+    page_title="Mirador - Plataforma de Registro de Huéspedes",
+    page_icon="Logo.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
