@@ -7,7 +7,7 @@ class DBManager:
     def __init__(self):
         self.db_url = os.getenv("DATABASE_URL")
         if not self.db_url:
-            raise ValueError("DATABASE_URL environment variable is not set")
+            raise ValueError(" DATABASE_URL environment variable is not set")
 
     def get_connection(self):
         return psycopg2.connect(self.db_url)
