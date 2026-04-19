@@ -35,7 +35,7 @@ if DB_AVAILABLE:
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="MIR Hospedajes Web Service Client",
+    page_title="MIRador",
     page_icon="🏨",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -44,19 +44,61 @@ st.set_page_config(
 # --- Custom Styles ---
 st.markdown("""
     <style>
-    .main {
-        background-color: #0e1117;
+    /* Expand the container to use the margins */
+    .block-container {
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        padding-top: 2rem !important;
+        max-width: 100% !important;
     }
+    
+    /* Elegant Dark Background */
+    .stApp {
+        background: linear-gradient(135deg, #0e1117 0%, #1a1e29 100%);
+    }
+
+    /* Inputs, Selects, and Date pickers (Subtle Glassmorphism) */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        color: #e0e0e0 !important;
+        transition: all 0.3s ease;
+    }
+    
+    /* Focus & Hover States */
+    .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus, .stDateInput>div>div>input:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Primary Buttons */
     .stButton>button {
         width: 100%;
-        border-radius: 5px;
-        height: 3em;
-        background-color: #ff4b4b;
+        border-radius: 8px;
+        height: 3.2em;
+        background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
         color: white;
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
     }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(124, 58, 237, 0.3) !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    /* Cards and Expanders */
     .stExpander {
-        background-color: #1e2130;
-        border-radius: 10px;
+        background-color: rgba(30, 33, 48, 0.6) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -207,24 +249,20 @@ def get_client():
     return client
 
 # --- Catalog Helper ---
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_catalog(tipo, defaults):
-    if 'cat_cache' not in st.session_state:
-        st.session_state.cat_cache = {}
-        
-    if tipo not in st.session_state.cat_cache:
-        mapping = {k: k for k in defaults}
-        if DB_AVAILABLE:
-            try:
-                db_data = get_db().get_catalogo(tipo)
-                if db_data:
-                    mapping = {item['codigo']: f"{item['codigo']} - {item['descripcion']}" for item in db_data}
-            except:
-                pass
-        st.session_state.cat_cache[tipo] = mapping
-    return st.session_state.cat_cache[tipo]
+    mapping = {k: k for k in defaults}
+    if DB_AVAILABLE:
+        try:
+            db_data = get_db().get_catalogo(tipo)
+            if db_data:
+                mapping = {item['codigo']: f"{item['codigo']} - {item['descripcion']}" for item in db_data}
+        except Exception as e:
+            st.warning(f"No se pudo cargar el catálogo {tipo}: {e}")
+    return mapping
 
 # --- Main Content ---
-st.title("🏨 MIR Hospedajes - Portal de Comunicaciones")
+st.title("🏨 MIRador")
 if not get_env_bool("MODO_SSL", "True") and not get_env_bool("MODO_MOCK", "True"):
     st.warning("⚠️ Validación SSL desactivada. La conexión no es segura (solo para pruebas).")
 elif not get_env_bool("MODO_MOCK", "True"):
@@ -237,194 +275,197 @@ tabs = st.tabs(["📤 Alta", "🔍 Consultas", "❌ Anulaciones", "📚 Catálog
 # --- TAB: Alta ---
 with tabs[0]:
     st.header("Envío de Comunicaciones (Alta)")
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
+    # Panel de Controles Superiores
+    ctrl_1, ctrl_2, ctrl_3, ctrl_4 = st.columns([2, 1, 1, 1])
+    with ctrl_1:
         tipo_com = st.selectbox("Tipo de Comunicación", [
             "PV - Partes de Viajeros",
             "RH - Reservas de Hospedaje",
             "AV - Alquiler de Vehículos",
             "RV - Reservas de Vehículos"
         ])
+    with ctrl_2:
         cod_est = st.text_input("Código Establecimiento", value=os.getenv("MIR_ESTABLECIMIENTO_CODE", ""))
-        
-        st.write("---")
-        st.write(f"👥 Viajeros: **{len(st.session_state.viajeros)}**")
+    with ctrl_3:
+        st.markdown(f"<div style='text-align: center; padding-top: 2rem;'>👥 Viajeros: <b>{len(st.session_state.viajeros)}</b></div>", unsafe_allow_html=True)
+    with ctrl_4:
         c_add, c_rem = st.columns(2)
         with c_add:
-            st.button("➕ Añadir", on_click=add_viajero)
+            st.write("") # Spacer
+            st.button("➕", on_click=add_viajero, help="Añadir viajero")
         with c_rem:
-            st.button("🗑️ Quitar", on_click=remove_viajero)
-        
-    with col2:
-        st.subheader("Datos de la Comunicación")
-        # Main form for contract and payment
-        with st.form("main_data_form"):
-            c1, c2 = st.columns(2)
-            with c1:
-                ref = st.text_input("Referencia del Contrato", f"REF-{datetime.now().strftime('%Y%m%d%H%M%S')}")
-                f_cont = st.date_input("Fecha Contrato", datetime.now())
-                num_hab = st.number_input("Número de Habitaciones", min_value=1, value=1)
-            with c2:
-                f_ent = st.datetime_input("Fecha Entrada/Inicio", datetime.now())
-                f_sal = st.datetime_input("Fecha Salida/Fin", datetime.now())
-                tiene_internet = st.checkbox("¿Tiene acceso a Internet?", value=False)
+            st.write("") # Spacer
+            st.button("🗑️", on_click=remove_viajero, help="Quitar viajero")
             
-            st.divider()
-            st.write("💳 Datos de Pago")
-            p_col1, p_col2 = st.columns([1, 3])
-            with p_col1:
-                cat_pago = load_catalog("TIPO_PAGO", ["EF", "TC", "TR", "OT"])
-                tipo_pago = st.selectbox("Tipo de Pago", options=list(cat_pago.keys()), format_func=lambda x: cat_pago[x], help="Selecciona según el catálogo oficial")
-                f_pago = st.date_input("Fecha de Pago", datetime.now())
-                p_caducidad = st.text_input("Caducidad Tarjeta", value="", placeholder="MM/AAAA", help="Solo para TC")
-            with p_col2:
-                medio_pago = st.text_input("Identificación del Medio de Pago (IBAN, Tarjeta, etc.)", value="")
-                p_titular = st.text_input("Nombre Completo del Titular del Pago", "")
-            
-            st.form_submit_button("Guardar Datos Generales", help="Pulsa esto para confirmar los datos de arriba antes de enviar.")
-
-        # Traveler inputs (outside form to be dynamic)
-        lista_personas_data = []
-        for i, viajero in enumerate(st.session_state.viajeros):
-            with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
-                v1, v2 = st.columns([2, 1])
-                with v1:
-                    p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', 'JUAN'), key=f"nom_{i}")
-                    p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', 'GARCIA'), key=f"ap1_{i}")
-                    
-                    # Logica para Segundo Apellido (Obligatorio para NIF)
-                    label_ap2 = f"Segundo Apellido P{i+1}"
-                    is_nif = st.session_state.get(f"tdoc_{i}") == "NIF"
-                    if is_nif:
-                        label_ap2 += " ⚠️ (Obligatorio para NIF)"
-                    
-                    p_ap2 = st.text_input(label_ap2, "", key=f"ap2_{i}")
-                    
-                    if is_nif and not p_ap2:
-                        st.error(f"El segundo apellido es obligatorio para NIF (Persona {i+1})")
-                    
-                    # Soporte Documento (Obligatorio para NIF/NIE)
-                    is_nie = st.session_state.get(f"tdoc_{i}") == "NIE"
-                    label_soporte = f"Número Soporte P{i+1}"
-                    if is_nif or is_nie:
-                        label_soporte += " ⚠️ (Obligatorio para NIF/NIE)"
-                    p_soporte = st.text_input(label_soporte, "", key=f"soporte_{i}", help="Ej: IDESP... para NIF o E... para NIE")
-                
-                with v2:
-                    cat_tdoc = load_catalog("TIPO_DOCUMENTO", ["NIF", "NIE", "PAS", "ID"])
-                    p_tdoc = st.selectbox(f"Tipo Doc P{i+1}", options=list(cat_tdoc.keys()), format_func=lambda x: cat_tdoc[x], key=f"tdoc_{i}")
-                    p_doc = st.text_input(f"Documento P{i+1}", "12345678Z", key=f"doc_{i}")
-                    
-                    cat_sexo = load_catalog("SEXO", ["M", "F", "X"])
-                    p_sexo = st.selectbox(f"Sexo P{i+1}", options=list(cat_sexo.keys()), format_func=lambda x: cat_sexo[x], key=f"sexo_{i}")
-                    p_fnac = st.date_input(f"Fecha Nacimiento P{i+1}", datetime(1980, 1, 1), key=f"fnac_{i}")
-                
-                # Calcular si es menor de edad (18 años)
-                es_menor = (datetime.now().date() - p_fnac).days < (18 * 365)
-                
-                v3, v4 = st.columns(2)
-                with v3:
-                    p_nac = st.text_input(f"Nacionalidad P{i+1}", "ESP", key=f"nac_{i}")
-                    
-                    cat_parentesco = load_catalog("TIPO_PARENTESCO", ["", "P", "M", "A", "H", "O"])
-                    p_parentesco = st.selectbox(f"Parentesco P{i+1}", options=list(cat_parentesco.keys()), format_func=lambda x: cat_parentesco[x] if x else "Ninguno", key=f"par_{i}")
-                    
-                    if es_menor and not p_parentesco:
-                        st.warning(f"Persona {i+1} es menor. El parentesco es obligatorio.")
-                with v4:
-                    p_rol = st.selectbox(f"Rol P{i+1}", ["VI"], help="VI: Viajero (Obligatorio)", key=f"rol_{i}")
-                
-                # Contacto
-                st.write(f"📞 Contacto P{i+1} (Al menos uno obligatorio)")
-                c1, c2 = st.columns(2)
-                with c1:
-                    p_tel = st.text_input(f"Teléfono P{i+1}", "", key=f"tel_{i}")
-                with c2:
-                    p_email = st.text_input(f"Correo Electrónico P{i+1}", "", key=f"email_{i}")
-                
-                if not p_tel and not p_email:
-                    st.error(f"Debes indicar al menos un teléfono o correo para la Persona {i+1}")
-                
-                # Direccion
-                st.write(f"🏠 Dirección P{i+1}")
-                d1, d2, d3, d4 = st.columns([2, 2, 1, 1])
-                with d1:
-                    d_dir = st.text_input(f"Dirección P{i+1}", "CALLE FALSA 123", key=f"dir_{i}")
-                with d2:
-                    cat_mun = load_catalog("MUNICIPIO", ["28079"])
-                    d_mun = st.selectbox(f"Municipio P{i+1}", options=list(cat_mun.keys()), format_func=lambda x: cat_mun[x] if x in cat_mun else x, key=f"mun_{i}", help="Escribe para buscar el municipio")
-                with d3:
-                    d_cp = st.text_input(f"CP P{i+1}", "28001", key=f"cp_{i}")
-                with d4:
-                    d_pais = st.text_input(f"País P{i+1}", "ESP", key=f"dpais_{i}")
-
-                # Update session state with current values
-                st.session_state.viajeros[i]['nombre'] = p_nom
-                st.session_state.viajeros[i]['apellido1'] = p_ap1
-
-                lista_personas_data.append({
-                    'rol': p_rol, 'nombre': p_nom, 'apellido1': p_ap1, 'apellido2': p_ap2,
-                    'tipoDocumento': p_tdoc, 'numeroDocumento': p_doc, 'soporteDocumento': p_soporte,
-                    'fechaNacimiento': p_fnac.strftime('%Y-%m-%d'), 'nacionalidad': p_nac, 'sexo': p_sexo,
-                    'telefono': p_tel, 'correo': p_email, 'parentesco': p_parentesco,
-                    'direccion': {'direccion': d_dir, 'codigoMunicipio': d_mun, 'codigoPostal': d_cp, 'pais': d_pais}
-                })
+    st.divider()
+    
+    st.subheader("📝 Datos de la Comunicación")
+    # Main form for contract and payment
+    with st.form("main_data_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            ref = st.text_input("Referencia del Contrato", f"REF-{datetime.now().strftime('%Y%m%d%H%M%S')}")
+            f_cont = st.date_input("Fecha Contrato", datetime.now())
+            num_hab = st.number_input("Número de Habitaciones", min_value=1, value=1)
+        with c2:
+            f_ent = st.datetime_input("Fecha Entrada/Inicio", datetime.now())
+            f_sal = st.datetime_input("Fecha Salida/Fin", datetime.now())
+            tiene_internet = st.checkbox("¿Tiene acceso a Internet?", value=False)
         
         st.divider()
-        if st.button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary"):
-            # Final validation
-            errors = []
-            for i, p in enumerate(lista_personas_data):
-                if p['tipoDocumento'] == 'NIF' and not p.get('apellido2'):
-                    errors.append(f"Persona {i+1}: Falta el segundo apellido (NIF obligatorio)")
-                if p['tipoDocumento'] in ['NIF', 'NIE'] and not p.get('soporteDocumento'):
-                    errors.append(f"Persona {i+1}: Falta el número de soporte (Obligatorio para {p['tipoDocumento']})")
-                if not p.get('telefono') and not p.get('correo'):
-                    errors.append(f"Persona {i+1}: Debe indicar al menos un teléfono o correo")
-                if not p['direccion'].get('codigoMunicipio'):
-                    errors.append(f"Persona {i+1}: El municipio es obligatorio")
+        st.write("💳 Datos de Pago")
+        p_col1, p_col2 = st.columns([1, 3])
+        with p_col1:
+            cat_pago = load_catalog("TIPO_PAGO", ["EF", "TC", "TR", "OT"])
+            tipo_pago = st.selectbox("Tipo de Pago", options=list(cat_pago.keys()), format_func=lambda x: cat_pago[x], help="Selecciona según el catálogo oficial")
+            f_pago = st.date_input("Fecha de Pago", datetime.now())
+            p_caducidad = st.text_input("Caducidad Tarjeta", value="", placeholder="MM/AAAA", help="Solo para TC")
+        with p_col2:
+            medio_pago = st.text_input("Identificación del Medio de Pago (IBAN, Tarjeta, etc.)", value="")
+            p_titular = st.text_input("Nombre Completo del Titular del Pago", "")
+        
+        st.form_submit_button("Guardar Datos Generales", help="Pulsa esto para confirmar los datos de arriba antes de enviar.")
+
+    # Traveler inputs (outside form to be dynamic)
+    lista_personas_data = []
+    for i, viajero in enumerate(st.session_state.viajeros):
+        with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
+            v1, v2 = st.columns([2, 1])
+            with v1:
+                p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', 'JUAN'), key=f"nom_{i}")
+                p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', 'GARCIA'), key=f"ap1_{i}")
                 
-                # Check for minor
-                dob = datetime.strptime(p['fechaNacimiento'], '%Y-%m-%d').date()
-                if (datetime.now().date() - dob).days < (18 * 365):
-                    if not p.get('parentesco'):
-                        errors.append(f"Persona {i+1}: Es menor de edad y falta el parentesco")
+                # Logica para Segundo Apellido (Obligatorio para NIF)
+                label_ap2 = f"Segundo Apellido P{i+1}"
+                is_nif = st.session_state.get(f"tdoc_{i}") == "NIF"
+                if is_nif:
+                    label_ap2 += " ⚠️ (Obligatorio para NIF)"
+                
+                p_ap2 = st.text_input(label_ap2, "", key=f"ap2_{i}")
+                
+                if is_nif and not p_ap2:
+                    st.error(f"El segundo apellido es obligatorio para NIF (Persona {i+1})")
+                
+                # Soporte Documento (Obligatorio para NIF/NIE)
+                is_nie = st.session_state.get(f"tdoc_{i}") == "NIE"
+                label_soporte = f"Número Soporte P{i+1}"
+                if is_nif or is_nie:
+                    label_soporte += " ⚠️ (Obligatorio para NIF/NIE)"
+                p_soporte = st.text_input(label_soporte, "", key=f"soporte_{i}", help="Ej: IDESP... para NIF o E... para NIE")
             
-            if errors:
-                for err in errors: st.error(err)
-                st.stop()
+            with v2:
+                cat_tdoc = load_catalog("TIPO_DOCUMENTO", ["NIF", "NIE", "PAS", "ID"])
+                p_tdoc = st.selectbox(f"Tipo Doc P{i+1}", options=list(cat_tdoc.keys()), format_func=lambda x: cat_tdoc[x], key=f"tdoc_{i}")
+                p_doc = st.text_input(f"Documento P{i+1}", "12345678Z", key=f"doc_{i}")
                 
-            client = get_client()
-            if client:
-                # Preparar estructura de datos completa
-                data = [{
-                    'referencia': ref,
-                    'fechaContrato': f_cont.strftime('%Y-%m-%d'),
-                    'fechaEntrada': f_ent.strftime('%Y-%m-%dT%H:%M:%S'),
-                    'fechaSalida': f_sal.strftime('%Y-%m-%dT%H:%M:%S'),
-                    'numPersonas': len(lista_personas_data),
-                    'numHabitaciones': num_hab,
-                    'internet': tiene_internet,
-                    'pago': {
-                        'tipoPago': tipo_pago, 
-                        'medioPago': medio_pago,
-                        'fechaPago': f_pago.strftime('%Y-%m-%d'),
-                        'titular': p_titular,
-                        'caducidadTarjeta': p_caducidad
-                    },
-                    'personas': lista_personas_data
-                }]
+                cat_sexo = load_catalog("SEXO", ["M", "F", "X"])
+                p_sexo = st.selectbox(f"Sexo P{i+1}", options=list(cat_sexo.keys()), format_func=lambda x: cat_sexo[x], key=f"sexo_{i}")
+                p_fnac = st.date_input(f"Fecha Nacimiento P{i+1}", datetime(1980, 1, 1), key=f"fnac_{i}")
+            
+            # Calcular si es menor de edad (18 años)
+            es_menor = (datetime.now().date() - p_fnac).days < (18 * 365)
+            
+            v3, v4 = st.columns(2)
+            with v3:
+                p_nac = st.text_input(f"Nacionalidad P{i+1}", "ESP", key=f"nac_{i}")
+            with v4:
+                cat_parentesco = load_catalog("TIPO_PARENTESCO", ["", "P", "M", "A", "H", "O"])
+                p_parentesco = st.selectbox(f"Parentesco P{i+1}", options=list(cat_parentesco.keys()), format_func=lambda x: cat_parentesco[x] if x else "Ninguno", key=f"par_{i}")
                 
-                xml_content = client.generate_alta_parte_hospedaje_xml(cod_est, data)
-                res = client.comunicacion(cod_arrendador, app_name, 'A', tipo_com[:2], xml_content)
+            if es_menor and not p_parentesco:
+                st.warning(f"Persona {i+1} es menor. El parentesco es obligatorio.")
                 
-                st.success("Operación procesada")
-                st.json(res)
-                
-                with st.expander("Ver XML Generado"):
-                    st.code(xml_content.decode('utf-8'), language='xml')
+            p_rol = "VI"
+            
+            # Contacto
+            st.write(f"📞 Contacto P{i+1} (Al menos uno obligatorio)")
+            c1, c2 = st.columns(2)
+            with c1:
+                p_tel = st.text_input(f"Teléfono P{i+1}", "", key=f"tel_{i}")
+            with c2:
+                p_email = st.text_input(f"Correo Electrónico P{i+1}", "", key=f"email_{i}")
+            
+            if not p_tel and not p_email:
+                st.error(f"Debes indicar al menos un teléfono o correo para la Persona {i+1}")
+            
+            # Direccion
+            st.write(f"🏠 Dirección P{i+1}")
+            d1, d2, d3, d4 = st.columns([2, 2, 1, 1])
+            with d1:
+                d_dir = st.text_input(f"Dirección P{i+1}", "CALLE FALSA 123", key=f"dir_{i}")
+            with d2:
+                cat_mun = load_catalog("MUNICIPIO", ["28079"])
+                d_mun = st.selectbox(f"Municipio P{i+1}", options=list(cat_mun.keys()), format_func=lambda x: cat_mun[x] if x in cat_mun else x, key=f"mun_{i}", help="Escribe para buscar el municipio")
+            with d3:
+                d_cp = st.text_input(f"CP P{i+1}", "28001", key=f"cp_{i}")
+            with d4:
+                d_pais = st.text_input(f"País P{i+1}", "ESP", key=f"dpais_{i}")
+
+            # Update session state with current values
+            st.session_state.viajeros[i]['nombre'] = p_nom
+            st.session_state.viajeros[i]['apellido1'] = p_ap1
+
+            lista_personas_data.append({
+                'rol': p_rol, 'nombre': p_nom, 'apellido1': p_ap1, 'apellido2': p_ap2,
+                'tipoDocumento': p_tdoc, 'numeroDocumento': p_doc, 'soporteDocumento': p_soporte,
+                'fechaNacimiento': p_fnac.strftime('%Y-%m-%d'), 'nacionalidad': p_nac, 'sexo': p_sexo,
+                'telefono': p_tel, 'correo': p_email, 'parentesco': p_parentesco,
+                'direccion': {'direccion': d_dir, 'codigoMunicipio': d_mun, 'codigoPostal': d_cp, 'pais': d_pais}
+            })
+    
+    st.divider()
+    if st.button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary"):
+        # Final validation
+        errors = []
+        for i, p in enumerate(lista_personas_data):
+            if p['tipoDocumento'] == 'NIF' and not p.get('apellido2'):
+                errors.append(f"Persona {i+1}: Falta el segundo apellido (NIF obligatorio)")
+            if p['tipoDocumento'] in ['NIF', 'NIE'] and not p.get('soporteDocumento'):
+                errors.append(f"Persona {i+1}: Falta el número de soporte (Obligatorio para {p['tipoDocumento']})")
+            if not p.get('telefono') and not p.get('correo'):
+                errors.append(f"Persona {i+1}: Debe indicar al menos un teléfono o correo")
+            if not p['direccion'].get('codigoMunicipio'):
+                errors.append(f"Persona {i+1}: El municipio es obligatorio")
+            
+            # Check for minor
+            dob = datetime.strptime(p['fechaNacimiento'], '%Y-%m-%d').date()
+            if (datetime.now().date() - dob).days < (18 * 365):
+                if not p.get('parentesco'):
+                    errors.append(f"Persona {i+1}: Es menor de edad y falta el parentesco")
+        
+        if errors:
+            for err in errors: st.error(err)
+            st.stop()
+            
+        client = get_client()
+        if client:
+            # Preparar estructura de datos completa
+            data = [{
+                'referencia': ref,
+                'fechaContrato': f_cont.strftime('%Y-%m-%d'),
+                'fechaEntrada': f_ent.strftime('%Y-%m-%dT%H:%M:%S'),
+                'fechaSalida': f_sal.strftime('%Y-%m-%dT%H:%M:%S'),
+                'numPersonas': len(lista_personas_data),
+                'numHabitaciones': num_hab,
+                'internet': tiene_internet,
+                'pago': {
+                    'tipoPago': tipo_pago, 
+                    'medioPago': medio_pago,
+                    'fechaPago': f_pago.strftime('%Y-%m-%d'),
+                    'titular': p_titular,
+                    'caducidadTarjeta': p_caducidad
+                },
+                'personas': lista_personas_data
+            }]
+            
+            xml_content = client.generate_alta_parte_hospedaje_xml(cod_est, data)
+            res = client.comunicacion(cod_arrendador, app_name, 'A', tipo_com[:2], xml_content)
+            
+            st.success("Operación procesada")
+            st.json(res)
+            
+            with st.expander("Ver XML Generado"):
+                st.code(xml_content.decode('utf-8'), language='xml')
 
 # --- TAB: Consultas ---
 with tabs[1]:

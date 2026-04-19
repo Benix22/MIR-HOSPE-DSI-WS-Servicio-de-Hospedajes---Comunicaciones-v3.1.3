@@ -2,7 +2,7 @@ import base64
 import io
 import zipfile
 import lxml.etree as ET
-from zeep import Client, Transport, helpers
+from zeep import Client, Transport, helpers, Settings
 from requests import Session
 import requests
 import urllib3
@@ -55,7 +55,8 @@ class HospedajesClient:
                 session.auth = requests.auth.HTTPBasicAuth(username, password)
             
             transport = Transport(session=session, timeout=15)
-            self.client = Client(wsdl_path, transport=transport)
+            settings = Settings(strict=False, xml_huge_tree=True)
+            self.client = Client(wsdl_path, transport=transport, settings=settings)
             
             if endpoint:
                 self.service = self.client.create_service(
