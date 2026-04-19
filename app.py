@@ -61,94 +61,20 @@ st.set_page_config(
     page_title="Mirador - Plataforma de Registro de Huéspedes",
     page_icon="Logo.png",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
+    menu_items={}
 )
 
 st.logo("Logo.png", icon_image="Logo.png")
 
 # --- Custom Styles ---
-st.markdown("""
-    <style>
-    /* Expand the container to use the margins */
-    .block-container {
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-        padding-top: 2rem !important;
-        max-width: 100% !important;
-    }
-    
-    /* Elegant Dark Background */
-    .stApp {
-        background: linear-gradient(135deg, #0e1117 0%, #1a1e29 100%);
-    }
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-    /* Inputs, Selects, and Date pickers (Subtle Glassmorphism) */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
-        color: #e0e0e0 !important;
-        transition: all 0.3s ease;
-    }
-    
-    /* Focus & Hover States */
-    .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus, .stDateInput>div>div>input:focus {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
-        background-color: rgba(255, 255, 255, 0.1) !important;
-    }
+if os.path.exists("static/css/style.css"):
+    local_css("static/css/style.css")
 
-    /* Primary Buttons */
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 3.2em;
-        background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
-        color: white;
-        border: none;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 15px rgba(124, 58, 237, 0.3) !important;
-        color: white !important;
-        border: none !important;
-    }
-
-    /* Cards and Expanders */
-    .stExpander {
-        background-color: rgba(30, 33, 48, 0.6) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    /* Logo size increase */
-    [data-testid="stLogo"], [data-testid="stLogo"] img {
-        height: 120px !important;
-        width: auto !important;
-        max-height: none !important;
-    }
-
-    /* Rounded corners for the main logo and other images */
-    [data-testid="stImage"], [data-testid="stImage"] img {
-        border-radius: 15px !important;
-        overflow: hidden !important;
-    }
-    /* Top Banner Styling */
-    .hero-banner {
-        background: rgba(255, 255, 255, 0.03);
-        padding: 1.5rem;
-        border-radius: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- Authentication UI ---
 if not st.session_state.user:

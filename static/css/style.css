@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* UNIFIED BACKGROUNDS (Step 1) */
+[data-testid="stSidebar"],
+[data-testid="stVerticalBlock"]>[style*="flex-direction: column;"]>[data-testid="stVerticalBlock"],
+.stForm,
+[data-testid="stExpander"],
+[data-testid="stMetric"] {
+    background-color: #1E293B !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stApp {
+    background-color: #0F172A !important;
+}
+
+/* SCALE & FONTS */
+html,
+body,
+[class*="css"] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 13px !important;
+    color: #E2E8F0 !important;
+}
+
+.block-container {
+    padding: 1rem 1.5rem !important;
+    max-width: 1400px !important;
+}
+
+h1 {
+    font-size: 1.5rem !important;
+    color: #F8FAFC !important;
+}
+
+h2 {
+    font-size: 1.3rem !important;
+    color: #F8FAFC !important;
+}
+
+h3 {
+    font-size: 1.1rem !important;
+    color: #F8FAFC !important;
+}
+
+label,
+.stMarkdown p {
+    color: #94A3B8 !important;
+    font-size: 12px !important;
+}
+
+/* FOOTER HIDE & HEADER TRANSPARENCY */
+[data-testid="stHeader"] {
+    background-color: rgba(0, 0, 0, 0) !important;
+    border: none !important;
+}
+footer {
+    visibility: hidden !important;
+}
+
+/* INPUTS & SELECTS */
+.stTextInput input,
+.stSelectbox [data-testid="stSelectbox"]>div,
+.stDateInput input,
+.stNumberInput input,
+.stTextArea textarea,
+div[data-baseweb="select"]>div {
+    background-color: #1E293B !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #F8FAFC !important;
+    font-size: 12px !important;
+}
+
+/* BUTTONS */
+.stButton>button[kind="primary"] {
+    background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+.stButton>button[kind="secondary"] {
+    background-color: transparent !important;
+    color: #38BDF8 !important;
+    border: 1px solid #38BDF8 !important;
+    border-radius: 8px !important;
+}
+
+/* LAYOUT */
+.header-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
