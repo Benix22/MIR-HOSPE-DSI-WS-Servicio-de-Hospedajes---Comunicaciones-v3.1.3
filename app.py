@@ -360,139 +360,138 @@ with tabs[0]:
     # Traveler inputs (Inside a form to capture all fields at once)
     with st.form("travelers_form"):
         lista_personas_data = []
-    for i, viajero in enumerate(st.session_state.viajeros):
-        with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
-            v1, v2 = st.columns([2, 1])
-            with v1:
-                p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', ''), key=f"nom_{i}")
-                p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', ''), key=f"ap1_{i}")
+        for i, viajero in enumerate(st.session_state.viajeros):
+            with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
+                v1, v2 = st.columns([2, 1])
+                with v1:
+                    p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', ''), key=f"nom_{i}")
+                    p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', ''), key=f"ap1_{i}")
+                    
+                    # Logica para Segundo Apellido (Obligatorio para NIF)
+                    label_ap2 = f"Segundo Apellido P{i+1}"
+                    is_nif = st.session_state.get(f"tdoc_{i}") == "NIF"
+                    if is_nif:
+                        label_ap2 += " ⚠️ (Obligatorio para NIF)"
+                    
+                    p_ap2 = st.text_input(label_ap2, "", key=f"ap2_{i}")
+                    
+                    # Soporte Documento (Obligatorio para NIF/NIE)
+                    is_nie = st.session_state.get(f"tdoc_{i}") == "NIE"
+                    label_soporte = f"Número Soporte P{i+1}"
+                    if is_nif or is_nie:
+                        label_soporte += " ⚠️ (Obligatorio para NIF/NIE)"
+                    p_soporte = st.text_input(label_soporte, "", key=f"soporte_{i}", help="Ej: IDESP... para NIF o E... para NIE")
                 
-                # Logica para Segundo Apellido (Obligatorio para NIF)
-                label_ap2 = f"Segundo Apellido P{i+1}"
-                is_nif = st.session_state.get(f"tdoc_{i}") == "NIF"
-                if is_nif:
-                    label_ap2 += " ⚠️ (Obligatorio para NIF)"
+                with v2:
+                    cat_tdoc = load_catalog("TIPO_DOCUMENTO", ["NIF", "NIE", "PAS", "ID"])
+                    p_tdoc = st.selectbox(f"Tipo Doc P{i+1}", options=list(cat_tdoc.keys()), format_func=lambda x: cat_tdoc[x], key=f"tdoc_{i}")
+                    p_doc = st.text_input(f"Documento P{i+1}", "", key=f"doc_{i}")
+                    
+                    cat_sexo = load_catalog("SEXO", ["M", "F", "X"])
+                    p_sexo = st.selectbox(f"Sexo P{i+1}", options=list(cat_sexo.keys()), format_func=lambda x: cat_sexo[x], key=f"sexo_{i}")
+                    p_fnac = st.date_input(f"Fecha Nacimiento P{i+1}", datetime(1980, 1, 1), key=f"fnac_{i}")
                 
-                p_ap2 = st.text_input(label_ap2, "", key=f"ap2_{i}")
+                # Calcular si es menor de edad (18 años)
+                es_menor = (datetime.now().date() - p_fnac).days < (18 * 365)
                 
-                # Soporte Documento (Obligatorio para NIF/NIE)
-                is_nie = st.session_state.get(f"tdoc_{i}") == "NIE"
-                label_soporte = f"Número Soporte P{i+1}"
-                if is_nif or is_nie:
-                    label_soporte += " ⚠️ (Obligatorio para NIF/NIE)"
-                p_soporte = st.text_input(label_soporte, "", key=f"soporte_{i}", help="Ej: IDESP... para NIF o E... para NIE")
-            
-            with v2:
-                cat_tdoc = load_catalog("TIPO_DOCUMENTO", ["NIF", "NIE", "PAS", "ID"])
-                p_tdoc = st.selectbox(f"Tipo Doc P{i+1}", options=list(cat_tdoc.keys()), format_func=lambda x: cat_tdoc[x], key=f"tdoc_{i}")
-                p_doc = st.text_input(f"Documento P{i+1}", "", key=f"doc_{i}")
+                v3, v4 = st.columns(2)
+                with v3:
+                    p_nac = st.text_input(f"Nacionalidad P{i+1}", "", key=f"nac_{i}")
+                with v4:
+                    cat_parentesco = load_catalog("TIPO_PARENTESCO", ["", "P", "M", "A", "H", "O"])
+                    p_parentesco = st.selectbox(f"Parentesco P{i+1}", options=list(cat_parentesco.keys()), format_func=lambda x: cat_parentesco[x] if x else "Ninguno", key=f"par_{i}")
+                    
+                p_rol = "VI"
                 
-                cat_sexo = load_catalog("SEXO", ["M", "F", "X"])
-                p_sexo = st.selectbox(f"Sexo P{i+1}", options=list(cat_sexo.keys()), format_func=lambda x: cat_sexo[x], key=f"sexo_{i}")
-                p_fnac = st.date_input(f"Fecha Nacimiento P{i+1}", datetime(1980, 1, 1), key=f"fnac_{i}")
-            
-            # Calcular si es menor de edad (18 años)
-            es_menor = (datetime.now().date() - p_fnac).days < (18 * 365)
-            
-            v3, v4 = st.columns(2)
-            with v3:
-                p_nac = st.text_input(f"Nacionalidad P{i+1}", "", key=f"nac_{i}")
-            with v4:
-                cat_parentesco = load_catalog("TIPO_PARENTESCO", ["", "P", "M", "A", "H", "O"])
-                p_parentesco = st.selectbox(f"Parentesco P{i+1}", options=list(cat_parentesco.keys()), format_func=lambda x: cat_parentesco[x] if x else "Ninguno", key=f"par_{i}")
+                # Contacto
+                st.write(f"📞 Contacto P{i+1} (Al menos uno obligatorio)")
+                c1, c2 = st.columns(2)
+                with c1:
+                    p_tel = st.text_input(f"Teléfono P{i+1}", "", key=f"tel_{i}")
+                with c2:
+                    p_email = st.text_input(f"Correo Electrónico P{i+1}", "", key=f"email_{i}")
                 
-            p_rol = "VI"
-            
-            # Contacto
-            st.write(f"📞 Contacto P{i+1} (Al menos uno obligatorio)")
-            c1, c2 = st.columns(2)
-            with c1:
-                p_tel = st.text_input(f"Teléfono P{i+1}", "", key=f"tel_{i}")
-            with c2:
-                p_email = st.text_input(f"Correo Electrónico P{i+1}", "", key=f"email_{i}")
-            
-            # Direccion
-            st.write(f"🏠 Dirección P{i+1}")
-            d1, d2, d3, d4 = st.columns([2, 2, 1, 1])
-            with d1:
-                d_dir = st.text_input(f"Dirección P{i+1}", "", key=f"dir_{i}")
-            with d2:
-                cat_mun = load_catalog("MUNICIPIO", ["28079"])
-                d_mun = st.selectbox(f"Municipio P{i+1}", options=list(cat_mun.keys()), format_func=lambda x: cat_mun[x] if x in cat_mun else x, key=f"mun_{i}", help="Escribe para buscar el municipio")
-            with d3:
-                d_cp = st.text_input(f"CP P{i+1}", "", key=f"cp_{i}")
-            with d4:
-                d_pais = st.text_input(f"País P{i+1}", "", key=f"dpais_{i}")
-
-            # Update session state with current values
-            st.session_state.viajeros[i]['nombre'] = p_nom
-            st.session_state.viajeros[i]['apellido1'] = p_ap1
-
-            lista_personas_data.append({
-                'rol': p_rol, 'nombre': p_nom, 'apellido1': p_ap1, 'apellido2': p_ap2,
-                'tipoDocumento': p_tdoc, 'numeroDocumento': p_doc, 'soporteDocumento': p_soporte,
-                'fechaNacimiento': p_fnac.strftime('%Y-%m-%d'), 'nacionalidad': p_nac, 'sexo': p_sexo,
-                'telefono': p_tel, 'correo': p_email, 'parentesco': p_parentesco,
-                'direccion': {'direccion': d_dir, 'codigoMunicipio': d_mun, 'codigoPostal': d_cp, 'pais': d_pais}
-            })
+                # Direccion
+                st.write(f"🏠 Dirección P{i+1}")
+                d1, d2, d3, d4 = st.columns([2, 2, 1, 1])
+                with d1:
+                    d_dir = st.text_input(f"Dirección P{i+1}", "", key=f"dir_{i}")
+                with d2:
+                    cat_mun = load_catalog("MUNICIPIO", ["28079"])
+                    d_mun = st.selectbox(f"Municipio P{i+1}", options=list(cat_mun.keys()), format_func=lambda x: cat_mun[x] if x in cat_mun else x, key=f"mun_{i}", help="Escribe para buscar el municipio")
+                with d3:
+                    d_cp = st.text_input(f"CP P{i+1}", "", key=f"cp_{i}")
+                with d4:
+                    d_pais = st.text_input(f"País P{i+1}", "", key=f"dpais_{i}")
     
-    st.divider()
-    if st.form_submit_button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary", use_container_width=True):
-        # Final validation
-        errors = []
-        for i, p in enumerate(lista_personas_data):
-            if not p.get('nombre'):
-                errors.append(f"Persona {i+1}: El nombre es obligatorio")
-            if not p.get('apellido1'):
-                errors.append(f"Persona {i+1}: El primer apellido es obligatorio")
-            if p['tipoDocumento'] == 'NIF' and not p.get('apellido2'):
-                errors.append(f"Persona {i+1}: Falta el segundo apellido (NIF obligatorio)")
-            if not p.get('numeroDocumento'):
-                errors.append(f"Persona {i+1}: El número de documento es obligatorio")
-            if p['tipoDocumento'] in ['NIF', 'NIE'] and not p.get('soporteDocumento'):
-                errors.append(f"Persona {i+1}: Falta el número de soporte (Obligatorio para {p['tipoDocumento']})")
-            if not p.get('telefono') and not p.get('correo'):
-                errors.append(f"Persona {i+1}: Debe indicar al menos un teléfono o correo")
-            if not p['direccion'].get('codigoMunicipio'):
-                errors.append(f"Persona {i+1}: El municipio es obligatorio")
-            if not p.get('nacionalidad'):
-                errors.append(f"Persona {i+1}: La nacionalidad es obligatoria (ej: ESP)")
-            if not p['direccion'].get('pais'):
-                errors.append(f"Persona {i+1}: El país de la dirección es obligatorio (ej: ESP)")
-            
-            # Check for minor
-            dob = datetime.strptime(p['fechaNacimiento'], '%Y-%m-%d').date()
-            if (datetime.now().date() - dob).days < (18 * 365):
-                if not p.get('parentesco'):
-                    errors.append(f"Persona {i+1}: Es menor de edad y falta el parentesco")
+                # Update session state with current values
+                st.session_state.viajeros[i]['nombre'] = p_nom
+                st.session_state.viajeros[i]['apellido1'] = p_ap1
+    
+                lista_personas_data.append({
+                    'rol': p_rol, 'nombre': p_nom, 'apellido1': p_ap1, 'apellido2': p_ap2,
+                    'tipoDocumento': p_tdoc, 'numeroDocumento': p_doc, 'soporteDocumento': p_soporte,
+                    'fechaNacimiento': p_fnac.strftime('%Y-%m-%d'), 'nacionalidad': p_nac, 'sexo': p_sexo,
+                    'telefono': p_tel, 'correo': p_email, 'parentesco': p_parentesco,
+                    'direccion': {'direccion': d_dir, 'codigoMunicipio': d_mun, 'codigoPostal': d_cp, 'pais': d_pais}
+                })
         
-        if errors:
-            for err in errors: st.error(err)
-            st.stop()
-            
-        client = get_client()
-        if client:
-            # Preparar estructura de datos completa
-            data = [{
-                'referencia': ref,
-                'fechaContrato': f_cont.strftime('%Y-%m-%d'),
-                'fechaEntrada': f_ent.strftime('%Y-%m-%dT%H:%M:%S'),
-                'fechaSalida': f_sal.strftime('%Y-%m-%dT%H:%M:%S'),
-                'numPersonas': len(lista_personas_data),
-                'numHabitaciones': num_hab,
-                'internet': tiene_internet,
-                'pago': {
-                    'tipoPago': tipo_pago, 
-                    'medioPago': medio_pago,
-                    'fechaPago': f_pago.strftime('%Y-%m-%d'),
-                    'titular': p_titular,
-                    'caducidadTarjeta': p_caducidad
-                },
-                'personas': lista_personas_data
-            }]
-            
-            xml_content = client.generate_alta_parte_hospedaje_xml(cod_est, data)
-            res = client.comunicacion(cod_arrendador, app_name, 'A', tipo_com[:2], xml_content)
+        st.divider()
+        if st.form_submit_button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary", use_container_width=True):
+            # Final validation
+            errors = []
+            for i, p in enumerate(lista_personas_data):
+                if not p.get('nombre'):
+                    errors.append(f"Persona {i+1}: El nombre es obligatorio")
+                if not p.get('apellido1'):
+                    errors.append(f"Persona {i+1}: El primer apellido es obligatorio")
+                if p['tipoDocumento'] == 'NIF' and not p.get('apellido2'):
+                    errors.append(f"Persona {i+1}: Falta el segundo apellido (NIF obligatorio)")
+                if not p.get('numeroDocumento'):
+                    errors.append(f"Persona {i+1}: El número de documento es obligatorio")
+                if p['tipoDocumento'] in ['NIF', 'NIE'] and not p.get('soporteDocumento'):
+                    errors.append(f"Persona {i+1}: Falta el número de soporte (Obligatorio para {p['tipoDocumento']})")
+                if not p.get('telefono') and not p.get('correo'):
+                    errors.append(f"Persona {i+1}: Debe indicar al menos un teléfono o correo")
+                if not p['direccion'].get('codigoMunicipio'):
+                    errors.append(f"Persona {i+1}: El municipio es obligatorio")
+                if not p.get('nacionalidad'):
+                    errors.append(f"Persona {i+1}: La nacionalidad es obligatoria (ej: ESP)")
+                if not p['direccion'].get('pais'):
+                    errors.append(f"Persona {i+1}: El país de la dirección es obligatorio (ej: ESP)")
+                
+                # Check for minor
+                dob = datetime.strptime(p['fechaNacimiento'], '%Y-%m-%d').date()
+                if (datetime.now().date() - dob).days < (18 * 365):
+                    if not p.get('parentesco'):
+                        errors.append(f"Persona {i+1}: Es menor de edad y falta el parentesco")
+            if errors:
+                for err in errors: st.error(err)
+                st.stop()
+                
+            client = get_client()
+            if client:
+                # Preparar estructura de datos completa
+                data = [{
+                    'referencia': ref,
+                    'fechaContrato': f_cont.strftime('%Y-%m-%d'),
+                    'fechaEntrada': f_ent.strftime('%Y-%m-%dT%H:%M:%S'),
+                    'fechaSalida': f_sal.strftime('%Y-%m-%dT%H:%M:%S'),
+                    'numPersonas': len(lista_personas_data),
+                    'numHabitaciones': num_hab,
+                    'internet': tiene_internet,
+                    'pago': {
+                        'tipoPago': tipo_pago,
+                        'medioPago': medio_pago,
+                        'fechaPago': f_pago.strftime('%Y-%m-%d'),
+                        'titular': p_titular,
+                        'caducidadTarjeta': p_caducidad
+                    },
+                    'personas': lista_personas_data
+                }]
+                
+                xml_content = client.generate_alta_parte_hospedaje_xml(cod_est, data)
+                res = client.comunicacion(cod_arrendador, app_name, 'A', tipo_com[:2], xml_content)
             
             st.success("Operación procesada")
             st.json(res)
