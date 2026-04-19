@@ -357,8 +357,9 @@ with tabs[0]:
         
         st.form_submit_button("Guardar Datos Generales", help="Pulsa esto para confirmar los datos de arriba antes de enviar.")
 
-    # Traveler inputs (outside form to be dynamic)
-    lista_personas_data = []
+    # Traveler inputs (Inside a form to capture all fields at once)
+    with st.form("travelers_form"):
+        lista_personas_data = []
     for i, viajero in enumerate(st.session_state.viajeros):
         with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
             v1, v2 = st.columns([2, 1])
@@ -436,7 +437,7 @@ with tabs[0]:
             })
     
     st.divider()
-    if st.button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary"):
+    if st.form_submit_button("🚀 ENVIAR COMUNICACIÓN A MIR", type="primary", use_container_width=True):
         # Final validation
         errors = []
         for i, p in enumerate(lista_personas_data):
@@ -454,6 +455,10 @@ with tabs[0]:
                 errors.append(f"Persona {i+1}: Debe indicar al menos un teléfono o correo")
             if not p['direccion'].get('codigoMunicipio'):
                 errors.append(f"Persona {i+1}: El municipio es obligatorio")
+            if not p.get('nacionalidad'):
+                errors.append(f"Persona {i+1}: La nacionalidad es obligatoria (ej: ESP)")
+            if not p['direccion'].get('pais'):
+                errors.append(f"Persona {i+1}: El país de la dirección es obligatorio (ej: ESP)")
             
             # Check for minor
             dob = datetime.strptime(p['fechaNacimiento'], '%Y-%m-%d').date()
