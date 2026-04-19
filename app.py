@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
-from hospedajes_client import HospedajesClient
+from src.core.hospedajes_client import HospedajesClient
 import os
 from datetime import datetime
 from dotenv import load_dotenv
 
 # Optional DB Manager
 try:
-    from db_manager import get_db
+    from src.core.db_manager import get_db
     DB_AVAILABLE = True
 except Exception as e:
     DB_AVAILABLE = False
@@ -40,6 +40,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st.logo("Logo.png", icon_image="Logo.png")
 
 # --- Custom Styles ---
 st.markdown("""
@@ -100,6 +102,28 @@ st.markdown("""
         border-radius: 12px !important;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+    /* Logo size increase */
+    [data-testid="stLogo"], [data-testid="stLogo"] img {
+        height: 120px !important;
+        width: auto !important;
+        max-height: none !important;
+    }
+
+    /* Rounded corners for the main logo and other images */
+    [data-testid="stImage"], [data-testid="stImage"] img {
+        border-radius: 15px !important;
+        overflow: hidden !important;
+    }
+    /* Top Banner Styling */
+    .hero-banner {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1.5rem;
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -116,7 +140,7 @@ with st.sidebar:
         else:
             endpoint = st.text_input("Endpoint URL", "")
             
-        wsdl = st.text_input("WSDL Path/URL", "comunicacion.wsdl")
+        wsdl = st.text_input("WSDL Path/URL", "schemas/comunicacion.wsdl")
         
     with st.expander("🔐 Autenticación", expanded=True):
         user = st.text_input("Usuario (CIF/NIF)", value=os.getenv("MIR_USER", ""))
@@ -137,7 +161,7 @@ with st.sidebar:
 if 'client' not in st.session_state:
     st.session_state.client = None
 if 'viajeros' not in st.session_state:
-    st.session_state.viajeros = [{'nombre': 'JUAN', 'apellido1': 'GARCIA'}]
+    st.session_state.viajeros = [{'nombre': '', 'apellido1': ''}]
 
 def add_viajero():
     st.session_state.viajeros.append({'nombre': '', 'apellido1': ''})
@@ -262,13 +286,20 @@ def load_catalog(tipo, defaults):
     return mapping
 
 # --- Main Content ---
-st.title("🏨 MIRador")
-if not get_env_bool("MODO_SSL", "True") and not get_env_bool("MODO_MOCK", "True"):
-    st.warning("⚠️ Validación SSL desactivada. La conexión no es segura (solo para pruebas).")
-elif not get_env_bool("MODO_MOCK", "True"):
-    st.success("🔒 Validación SSL activa.")
-
-st.info("Esta aplicación permite gestionar el envío de partes y reservas según el RD 933/2021.")
+# Styled Header with Columns - Centered Vertically
+h_col1, h_col2 = st.columns([1, 6], vertical_alignment="center")
+with h_col1:
+    st.markdown('<div style="padding: 8px;">', unsafe_allow_html=True)
+    st.image("Logo.png", width=100)
+    st.markdown('</div>', unsafe_allow_html=True)
+with h_col2:
+    st.markdown("""
+        <div>
+            <h2 style='margin: 0; color: #f8fafc; font-weight: 700; font-size: 2.2rem;'>Mirador</h2>
+            <p style='margin: 0; color: #94a3b8; font-size: 1.2rem; margin-top: -5px;'>Plataforma de Registro de Huéspedes</p>
+        </div>
+    """, unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
 tabs = st.tabs(["📤 Alta", "🔍 Consultas", "❌ Anulaciones", "📚 Catálogo"])
 
@@ -299,30 +330,30 @@ with tabs[0]:
             
     st.divider()
     
-    st.subheader("📝 Datos de la Comunicación")
+    st.subheader("📋 Datos del Contrato")
     # Main form for contract and payment
     with st.form("main_data_form"):
         c1, c2 = st.columns(2)
         with c1:
-            ref = st.text_input("Referencia del Contrato", f"REF-{datetime.now().strftime('%Y%m%d%H%M%S')}")
-            f_cont = st.date_input("Fecha Contrato", datetime.now())
-            num_hab = st.number_input("Número de Habitaciones", min_value=1, value=1)
+            ref = st.text_input("🔗 Referencia del Contrato", f"REF-{datetime.now().strftime('%Y%m%d%H%M%S')}")
+            f_cont = st.date_input("📅 Fecha Contrato", datetime.now())
+            num_hab = st.number_input("🏨 Número de Habitaciones", min_value=1, value=1)
         with c2:
-            f_ent = st.datetime_input("Fecha Entrada/Inicio", datetime.now())
-            f_sal = st.datetime_input("Fecha Salida/Fin", datetime.now())
-            tiene_internet = st.checkbox("¿Tiene acceso a Internet?", value=False)
+            f_ent = st.datetime_input("🛫 Fecha Entrada/Inicio", datetime.now())
+            f_sal = st.datetime_input("🛬 Fecha Salida/Fin", datetime.now())
+            tiene_internet = st.checkbox("🌐 ¿Tiene acceso a Internet?", value=False)
         
         st.divider()
         st.write("💳 Datos de Pago")
         p_col1, p_col2 = st.columns([1, 3])
         with p_col1:
             cat_pago = load_catalog("TIPO_PAGO", ["EF", "TC", "TR", "OT"])
-            tipo_pago = st.selectbox("Tipo de Pago", options=list(cat_pago.keys()), format_func=lambda x: cat_pago[x], help="Selecciona según el catálogo oficial")
-            f_pago = st.date_input("Fecha de Pago", datetime.now())
-            p_caducidad = st.text_input("Caducidad Tarjeta", value="", placeholder="MM/AAAA", help="Solo para TC")
+            tipo_pago = st.selectbox("💰 Tipo de Pago", options=list(cat_pago.keys()), format_func=lambda x: cat_pago[x], help="Selecciona según el catálogo oficial")
+            f_pago = st.date_input("📆 Fecha de Pago", datetime.now())
+            p_caducidad = st.text_input("💳 Caducidad Tarjeta", value="", placeholder="MM/AAAA", help="Solo para TC")
         with p_col2:
-            medio_pago = st.text_input("Identificación del Medio de Pago (IBAN, Tarjeta, etc.)", value="")
-            p_titular = st.text_input("Nombre Completo del Titular del Pago", "")
+            medio_pago = st.text_input("🆔 Identificación del Medio de Pago", value="")
+            p_titular = st.text_input("👤 Nombre Completo del Titular", "")
         
         st.form_submit_button("Guardar Datos Generales", help="Pulsa esto para confirmar los datos de arriba antes de enviar.")
 
@@ -332,8 +363,8 @@ with tabs[0]:
         with st.expander(f"👤 Persona {i+1}: {viajero.get('nombre', '')} {viajero.get('apellido1', '')}", expanded=(i==len(st.session_state.viajeros)-1)):
             v1, v2 = st.columns([2, 1])
             with v1:
-                p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', 'JUAN'), key=f"nom_{i}")
-                p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', 'GARCIA'), key=f"ap1_{i}")
+                p_nom = st.text_input(f"Nombre P{i+1}", viajero.get('nombre', ''), key=f"nom_{i}")
+                p_ap1 = st.text_input(f"Primer Apellido P{i+1}", viajero.get('apellido1', ''), key=f"ap1_{i}")
                 
                 # Logica para Segundo Apellido (Obligatorio para NIF)
                 label_ap2 = f"Segundo Apellido P{i+1}"
@@ -342,9 +373,6 @@ with tabs[0]:
                     label_ap2 += " ⚠️ (Obligatorio para NIF)"
                 
                 p_ap2 = st.text_input(label_ap2, "", key=f"ap2_{i}")
-                
-                if is_nif and not p_ap2:
-                    st.error(f"El segundo apellido es obligatorio para NIF (Persona {i+1})")
                 
                 # Soporte Documento (Obligatorio para NIF/NIE)
                 is_nie = st.session_state.get(f"tdoc_{i}") == "NIE"
@@ -356,7 +384,7 @@ with tabs[0]:
             with v2:
                 cat_tdoc = load_catalog("TIPO_DOCUMENTO", ["NIF", "NIE", "PAS", "ID"])
                 p_tdoc = st.selectbox(f"Tipo Doc P{i+1}", options=list(cat_tdoc.keys()), format_func=lambda x: cat_tdoc[x], key=f"tdoc_{i}")
-                p_doc = st.text_input(f"Documento P{i+1}", "12345678Z", key=f"doc_{i}")
+                p_doc = st.text_input(f"Documento P{i+1}", "", key=f"doc_{i}")
                 
                 cat_sexo = load_catalog("SEXO", ["M", "F", "X"])
                 p_sexo = st.selectbox(f"Sexo P{i+1}", options=list(cat_sexo.keys()), format_func=lambda x: cat_sexo[x], key=f"sexo_{i}")
@@ -367,13 +395,10 @@ with tabs[0]:
             
             v3, v4 = st.columns(2)
             with v3:
-                p_nac = st.text_input(f"Nacionalidad P{i+1}", "ESP", key=f"nac_{i}")
+                p_nac = st.text_input(f"Nacionalidad P{i+1}", "", key=f"nac_{i}")
             with v4:
                 cat_parentesco = load_catalog("TIPO_PARENTESCO", ["", "P", "M", "A", "H", "O"])
                 p_parentesco = st.selectbox(f"Parentesco P{i+1}", options=list(cat_parentesco.keys()), format_func=lambda x: cat_parentesco[x] if x else "Ninguno", key=f"par_{i}")
-                
-            if es_menor and not p_parentesco:
-                st.warning(f"Persona {i+1} es menor. El parentesco es obligatorio.")
                 
             p_rol = "VI"
             
@@ -385,21 +410,18 @@ with tabs[0]:
             with c2:
                 p_email = st.text_input(f"Correo Electrónico P{i+1}", "", key=f"email_{i}")
             
-            if not p_tel and not p_email:
-                st.error(f"Debes indicar al menos un teléfono o correo para la Persona {i+1}")
-            
             # Direccion
             st.write(f"🏠 Dirección P{i+1}")
             d1, d2, d3, d4 = st.columns([2, 2, 1, 1])
             with d1:
-                d_dir = st.text_input(f"Dirección P{i+1}", "CALLE FALSA 123", key=f"dir_{i}")
+                d_dir = st.text_input(f"Dirección P{i+1}", "", key=f"dir_{i}")
             with d2:
                 cat_mun = load_catalog("MUNICIPIO", ["28079"])
                 d_mun = st.selectbox(f"Municipio P{i+1}", options=list(cat_mun.keys()), format_func=lambda x: cat_mun[x] if x in cat_mun else x, key=f"mun_{i}", help="Escribe para buscar el municipio")
             with d3:
-                d_cp = st.text_input(f"CP P{i+1}", "28001", key=f"cp_{i}")
+                d_cp = st.text_input(f"CP P{i+1}", "", key=f"cp_{i}")
             with d4:
-                d_pais = st.text_input(f"País P{i+1}", "ESP", key=f"dpais_{i}")
+                d_pais = st.text_input(f"País P{i+1}", "", key=f"dpais_{i}")
 
             # Update session state with current values
             st.session_state.viajeros[i]['nombre'] = p_nom
@@ -418,8 +440,14 @@ with tabs[0]:
         # Final validation
         errors = []
         for i, p in enumerate(lista_personas_data):
+            if not p.get('nombre'):
+                errors.append(f"Persona {i+1}: El nombre es obligatorio")
+            if not p.get('apellido1'):
+                errors.append(f"Persona {i+1}: El primer apellido es obligatorio")
             if p['tipoDocumento'] == 'NIF' and not p.get('apellido2'):
                 errors.append(f"Persona {i+1}: Falta el segundo apellido (NIF obligatorio)")
+            if not p.get('numeroDocumento'):
+                errors.append(f"Persona {i+1}: El número de documento es obligatorio")
             if p['tipoDocumento'] in ['NIF', 'NIE'] and not p.get('soporteDocumento'):
                 errors.append(f"Persona {i+1}: Falta el número de soporte (Obligatorio para {p['tipoDocumento']})")
             if not p.get('telefono') and not p.get('correo'):
