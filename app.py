@@ -411,35 +411,23 @@ with h_col2:
     """, unsafe_allow_html=True)
 st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
+# Definir los tabs disponibles
+tab_titles = ["📤 Alta", "🔍 Consultas", "❌ Anulaciones", "📈 Estadísticas", "📅 Historial"]
 if st.session_state.user.get('role') == 'admin':
-    tabs = st.tabs(["📤 Alta", "🔍 Consultas", "❌ Anulaciones", "📚 Catálogo"])
-else:
-    tabs = st.tabs(["📤 Alta", "🔍 Consultas", "❌ Anulaciones"])
+    tab_titles.append("📋 Catálogo")
+
+tabs = st.tabs(tab_titles)
 
 # --- TAB: Alta ---
 with tabs[0]:
     st.header("Envío de Comunicaciones (Alta)")
     # Panel de Controles Superiores
-    ctrl_1, ctrl_2, ctrl_3, ctrl_4 = st.columns([2, 1, 1, 1])
-    with ctrl_1:
-        tipo_com = st.selectbox("Tipo de Comunicación", [
-            "PV - Partes de Viajeros",
-            "RH - Reservas de Hospedaje",
-            "AV - Alquiler de Vehículos",
-            "RV - Reservas de Vehículos"
-        ])
-    with ctrl_2:
-        cod_est = st.text_input("Código Establecimiento", value=os.getenv("MIR_ESTABLECIMIENTO_CODE", ""))
-    with ctrl_3:
-        st.markdown(f"<div style='text-align: center; padding-top: 2rem;'>👥 Viajeros: <b>{len(st.session_state.viajeros)}</b></div>", unsafe_allow_html=True)
-    with ctrl_4:
-        c_add, c_rem = st.columns(2)
-        with c_add:
-            st.write("") # Spacer
-            st.button("➕", on_click=add_viajero, help="Añadir viajero")
-        with c_rem:
-            st.write("") # Spacer
-            st.button("🗑️", on_click=remove_viajero, help="Quitar viajero")
+    tipo_com = st.selectbox("Tipo de Comunicación", [
+        "PV - Partes de Viajeros",
+        "RH - Reservas de Hospedaje",
+        "AV - Alquiler de Vehículos",
+        "RV - Reservas de Vehículos"
+    ])
             
     st.divider()
     
@@ -469,6 +457,18 @@ with tabs[0]:
             p_titular = st.text_input("👤 Nombre Completo del Titular", "")
         
         st.form_submit_button("Guardar Datos Generales", help="Pulsa esto para confirmar los datos de arriba antes de enviar.")
+
+    # Traveler controls
+    st.write("---")
+    t_col1, t_col2 = st.columns([3, 1], vertical_alignment="center")
+    with t_col1:
+        st.markdown(f"### 👥 Viajeros: **{len(st.session_state.viajeros)}**")
+    with t_col2:
+        c_add, c_rem = st.columns(2)
+        with c_add:
+            st.button("➕", on_click=add_viajero, help="Añadir viajero", use_container_width=True)
+        with c_rem:
+            st.button("🗑️", on_click=remove_viajero, help="Quitar viajero", use_container_width=True)
 
     # Traveler inputs (Inside a form to capture all fields at once)
     with st.form("travelers_form"):
@@ -619,12 +619,42 @@ with tabs[0]:
                 
                 xml_content = client.generate_alta_parte_hospedaje_xml(cod_est, data)
                 res = client.comunicacion(cod_arrendador, app_name, 'A', tipo_com[:2], xml_content)
+                
+                # Persistir en BBDD para estadísticas
+                if "error" not in res:
+                    get_db().save_comunicacion_completa(current_tenant_id, data, res)
             
-            st.success("Operación procesada")
-            st.json(res)
-            
-            with st.expander("Ver XML Generado"):
+            st.divider()
+            if "error" in res:
+                st.error(f"❌ Error de Comunicación: {res['error']}")
+            else:
+                resp_header = res.get('respuesta', {})
+                code = resp_header.get('codigo', 0)
+                desc = resp_header.get('descripcion', 'Sin descripción')
+                lote = resp_header.get('lote', 'N/A')
+                
+                if code == 0:
+                    st.success(f"✅ {desc}")
+                else:
+                    st.warning(f"⚠️ {desc} (Código: {code})")
+                
+                c_m1, c_m2 = st.columns(2)
+                with c_m1:
+                    st.metric("📦 Número de Lote", lote)
+                with c_m2:
+                    st.metric("🔢 Código Estado", code)
+                
+                results = res.get('resultado', [])
+                if results:
+                    with st.expander("📄 Detalles de la Comunicación", expanded=True):
+                        df_res = pd.DataFrame(results)
+                        st.dataframe(df_res, use_container_width=True)
+
+            with st.expander("🛠️ Depuración: Ver XML Enviado"):
                 st.code(xml_content.decode('utf-8'), language='xml')
+                if "error" not in res:
+                    st.write("Respuesta RAW:")
+                    st.json(res)
 
 # --- TAB: Consultas ---
 with tabs[1]:
@@ -639,8 +669,32 @@ with tabs[1]:
         else:
             res = client.consulta_comunicacion([search_val])
         
-        st.write("### Resultado")
-        st.json(res)
+        st.divider()
+        if "error" in res:
+            st.error(f"❌ Error: {res['error']}")
+        else:
+            # Handle different response structures for Lote vs Comunicación
+            if op_consulta == "Número de Lote":
+                resp_header = res.get('respuesta', {})
+                results = res.get('resultado', [])
+            else:
+                resp_header = res.get('resultado', {})
+                results = res.get('comunicacion', [])
+            
+            code = resp_header.get('codigo', 0)
+            desc = resp_header.get('descripcion', 'Operación completada')
+            
+            if code == 0:
+                st.success(f"✅ {desc}")
+            else:
+                st.warning(f"⚠️ {desc} (Código: {code})")
+            
+            if results:
+                with st.expander("📄 Ver detalles de la consulta", expanded=True):
+                    st.dataframe(pd.DataFrame(results), use_container_width=True)
+            
+            with st.expander("⚙️ Ver JSON Completo"):
+                st.json(res)
 
 # --- TAB: Anulaciones ---
 with tabs[2]:
@@ -653,16 +707,120 @@ with tabs[2]:
         if lote_anular:
             client = get_client()
             res = client.anulacion_lote(lote_anular)
-            st.write("### Resultado")
-            st.json(res)
-            if "error" not in res:
-                st.success("Solicitud de anulación enviada y procesada.")
+            st.divider()
+            if "error" in res:
+                st.error(f"❌ Error: {res['error']}")
+            else:
+                code = res.get('codigo', 0)
+                desc = res.get('descripcion', 'Lote anulado correctamente')
+                
+                if code == 0:
+                    st.success(f"✅ {desc}")
+                else:
+                    st.warning(f"⚠️ {desc} (Código: {code})")
+                
+                with st.expander("⚙️ Ver JSON Completo"):
+                    st.json(res)
         else:
             st.error("Debes introducir un número de lote válido.")
 
+# --- TAB: Estadísticas ---
+with tabs[3]:
+    st.header("📈 Dashboard de Estadísticas")
+    stats = get_db().get_statistics(current_tenant_id)
+    
+    if stats:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Huéspedes Registrados", stats['total_viajeros'])
+        with col2:
+            st.metric("Países de Origen", len(stats['nacionalidades']))
+        with col3:
+            st.metric("Viajeros Recurrentes", len(stats['repetidores']))
+            
+        st.divider()
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🌍 Top Nacionalidades")
+            if stats['nacionalidades']:
+                df_nac = pd.DataFrame(stats['nacionalidades'])
+                st.bar_chart(df_nac.set_index('nacionalidad'))
+            else:
+                st.info("Sin datos de nacionalidades aún.")
+                
+        with c2:
+            st.subheader("📅 Evolución de Registros")
+            if stats['evolucion']:
+                df_evo = pd.DataFrame(stats['evolucion'])
+                st.line_chart(df_evo.set_index('fecha'))
+            else:
+                st.info("Sin datos históricos aún.")
+
+        st.divider()
+        
+        g1, g2 = st.columns(2)
+        with g1:
+            st.subheader("📍 Provincias de Origen (ESP)")
+            if stats['provincias']:
+                df_prov = pd.DataFrame(stats['provincias'])
+                st.bar_chart(df_prov.set_index('provincia'))
+            else:
+                st.info("Sin datos de provincias aún.")
+        
+        with g2:
+            st.subheader("🏘️ Municipios de Origen")
+            if stats['municipios']:
+                df_mun = pd.DataFrame(stats['municipios'])
+                st.bar_chart(df_mun.set_index('municipio'))
+            else:
+                st.info("Sin datos de municipios aún.")
+        
+        st.subheader("👥 Huéspedes Frecuentes")
+        if stats['repetidores']:
+            st.dataframe(pd.DataFrame(stats['repetidores']), use_container_width=True)
+        else:
+            st.write("No se han detectado viajeros recurrentes todavía.")
+    else:
+        st.error("No se pudieron cargar las estadísticas.")
+
+# --- TAB: Historial ---
+with tabs[4]:
+    st.header("📅 Historial de Reservas y Viajeros")
+    historial = get_db().get_historial(current_tenant_id)
+    
+    if historial:
+        for item in historial:
+            # Color del estado
+            status_icon = "✅" if item['status_code'] == 0 else "❌"
+            title = f"{status_icon} {item['referencia_contrato']} | Lote: {item['lote']} | {item['created_at'].strftime('%d/%m/%Y %H:%M')}"
+            
+            with st.expander(title):
+                h_col1, h_col2, h_col3 = st.columns(3)
+                with h_col1:
+                    st.write("**Estancia:**")
+                    st.write(f"🛫 {item['fecha_entrada'].strftime('%d/%m/%Y')}")
+                    st.write(f"🛬 {item['fecha_salida'].strftime('%d/%m/%Y')}")
+                with h_col2:
+                    st.write("**Comunicación:**")
+                    st.write(f"Tipo: `{item['tipo_comunicacion']}`")
+                    st.write(f"Estado MIR: `{item['status_code']}`")
+                with h_col3:
+                    st.write("**Huéspedes:**")
+                    st.write(f"👥 {item['num_viajeros']} personas")
+                
+                # Cargar viajeros para este lote
+                viajeros_lote = get_db().get_viajeros_by_comunicacion(item['id'])
+                if viajeros_lote:
+                    st.markdown("---")
+                    st.write("📋 **Detalle de Viajeros:**")
+                    st.dataframe(pd.DataFrame(viajeros_lote), use_container_width=True)
+    else:
+        st.info("No hay registros en el historial todavía.")
+
 # --- TAB: Catálogo ---
 if st.session_state.user.get('role') == 'admin':
-    with tabs[3]:
+    with tabs[5]:
         st.header("Consulta de Catálogos")
         cat_target = st.selectbox("Catálogo", [
             "SEXO", 

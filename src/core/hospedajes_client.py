@@ -179,7 +179,19 @@ class HospedajesClient:
         }
         
         if self.mock_mode:
-            return {"status": "MOCK", "cabecera": cabecera, "preview": payload[:100]}
+            return {
+                "respuesta": {
+                    "codigo": 0,
+                    "descripcion": "OPERACIÓN PROCESADA CORRECTAMENTE (MOCK)",
+                    "lote": f"MOCK-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                },
+                "resultado": [{
+                    "lote": "MOCK-LOTE",
+                    "codigoEstado": 0,
+                    "descEstado": "Procesado correctamente en modo Mock",
+                    "fechaProcesamiento": datetime.now().isoformat()
+                }]
+            }
             
         try:
             response = self.service.comunicacion(peticion={'cabecera': cabecera, 'solicitud': payload})
